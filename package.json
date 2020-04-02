@@ -1,0 +1,25 @@
+{
+    "name": "fawzyproject",
+    "version": "1.0.0",
+    "description": "Project",
+    "main": "app.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "start": "nodemon app.js"
+    },
+    "author": "fawzy",
+    "license": "MIT",
+    "dependencies": {
+        "cookie-parser": "^1.4.5",
+        "ejs": "^3.0.2",
+        "express": "^4.17.1",
+        "express-session": "^1.17.0",
+        "jsonwebtoken": "^8.5.1",
+        "mongoose": "^5.7.1",
+        "morgan": "^1.10.0",
+        "nodemon": "^1.19.2",
+        "socket.io": "^2.3.0",
+        "socketio-auth": "^0.1.1",
+        "socketio-jwt": "^4.5.0"
+    }
+}

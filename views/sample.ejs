@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+    <p>Lorem ipsum dolor sit, amet consectetur adipisicing elit. Hic iste eum doloremque nobis numquam voluptates
+        voluptate dolore consequuntur similique ducimus assumenda corrupti in nesciunt, quasi porro explicabo accusamus
+        consectetur quis.</p>
+
+    <div id="demo"></div>
+
+    <%# Socket.io JS Library %>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script>
+
+    <%# Socket.io Code Let's start %>
+    <script>
+        const socket = io.connect('http://localhost:3000', { query: "token=<%= token %>", forceNew: true });
+        
+    </script>
+
+    
+</body>
+
+</html>
