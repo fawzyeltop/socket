@@ -8,14 +8,12 @@
 </head>
 
 <body>
-    <p>Lorem ipsum dolor sit, amet consectetur adipisicing elit. Hic iste eum doloremque nobis numquam voluptates
-        voluptate dolore consequuntur similique ducimus assumenda corrupti in nesciunt, quasi porro explicabo accusamus
-        consectetur quis.</p>
-    <div id="demo"></div>
-    <div id="demoForDriver">
-        <p id="test"></p>
-        <button id="accept">Accept</button>
-        <button id="update">Update</button>
+    <div class="content">
+        <h3>Here is a simple content</h3>
+        <p>Lorem ipsum dolor, sit amet consectetur adipisicing elit. Sed doloremque nemo architecto vitae iusto molestias accusamus reiciendis fugiat eaque dicta, error, odio veniam hic rem dolorum inventore quisquam. Officia, aliquam.</p>
+        <button type="button" id="Order">Order</button>
+        <div class="orderMessageToCustomer"></div>
+        <div class="orderMessageToDriver"></div>
     </div>
 
     <%# jQuery Library %>
@@ -30,29 +28,50 @@
     <%# Socket.io Code Let's start %>
     <script>
         const socket = io.connect('http://localhost:3000', { query: "token=<%= token %>", forceNew: true });
-        socket.emit("Order", { dataRequest: { customerID: 1, long: "5", lat: "5", location: "Ismailia" } })
+        $("#Order").click(() => {
+            socket.emit("Order", { dataRequest: { customerID: 3, fullname: "Mohamed Adel Ahmed", long: "5", lat: "5" } })
+        })
         socket.on("statusFound", async (data) => {
-            $("#demo").text(data.statusFound);
+            $(".orderMessageToCustomer").text(data.statusFound);
         })
         socket.on("orderToDrivers", data => {
-            console.log(`There is a new order- ${data.dataRequest}. Accept it`);
+            $(".orderMessageToDriver").html(`There is an Order with ID: ${data.dataRequest._id} recieved from the customer ${data.dataRequest.customerID} - ${data.dataRequest.fullname} - ${data.dataRequest.location} - ${data.dataRequest.long} - ${data.dataRequest.lat} You can accept it now <button id="accept">Accept</button> `);
             $("#accept").click(() => {
                 socket.emit("orderAcceptedByDriver", { driverID: 3, dataRequest: data.dataRequest })
             })
         })
-        socket.on("privateMessage", data => {
-           $("#demo").text(`Your request is accepted now by ${data.driverID}-${Math.random()}`);
-        });
 
-        socket.on("privateMessageA", data => {
-           $("#demo").text(`Your request is accepted now by ${data.driverID}-${Math.random()}`);
-        });
-        
-        
         socket.on("tokenStatus", data => {
             console.log(`${data.tokenStatus}`);
         })
 
+        socket.on("driverAttentionEvent", data => {
+            $(".orderMessageToDriver").text(data.driverAttention);
+        })
+
+        socket.on("privateMessageToCancel", data => {
+            $(".orderMessageToCustomer").html(`${data.driverDetails.fullname} with ID ${data.driverDetails.driverID} has accepted your order. You can cancel the order now in 30 seconds <button id="cancel">Cancel</button>`);
+            setTimeout(() => {
+                 $(".orderMessageToCustomer").remove();
+                 socket.emit("acceptOrderEvent", { driverID: data.driverDetails.driverID, dataRequest: data.dataRequest } )
+            }, 30000);
+            $("#cancel").click(() => {
+                socket.emit("cancelOrderEvent", { driverID: data.driverDetails.driverID, dataRequest: data.dataRequest })
+            })
+        })
+    
+        socket.on("CancelToCustomer", data => {
+            $(".orderMessageToCustomer").text(data.msg);
+        })
+
+        socket.on("CancelToDriver", data => {
+            $(".orderMessageToDriver").text(data.msg);
+        })
+
+        socket.on("acceptToDriver", data => {
+            $(".orderMessageToDriver").text(data.msg);
+        })
+        
         socket.on("onUpdated", data => {
             $("#update").click(() => {
                 socket.emit("onUpdatedA", { driverID: 3, customerID: data.customerID })

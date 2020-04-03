@@ -5,6 +5,11 @@ const userRequestSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
+    fullname: {
+        type: String,
+        required: true,
+        trim: true
+    },
     long: {
         type: String,
         required: true,
