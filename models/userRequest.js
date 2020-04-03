@@ -1,16 +1,16 @@
 const mongoose = require("mongoose");
 const userRequestSchema = new mongoose.Schema({
-    userID: {
+    customerID: {
         type: String,
         required: true,
         trim: true
     },
-    from: {
+    long: {
         type: String,
         required: true,
         trim: true
     },
-    to: {
+    lat: {
         type: String,
         required: true,
         trim: true
@@ -19,6 +19,16 @@ const userRequestSchema = new mongoose.Schema({
         type: String,
         required: true,
         trim: true
+    },
+    accepted: {
+        type: Boolean,
+        required: true,
+        default: false
+    },
+    completed: {
+        type: Boolean,
+        required: true,
+        default: false
     }
 })
 let UserRequest = mongoose.model("UserRequest", userRequestSchema);

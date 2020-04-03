@@ -43,51 +43,69 @@ const bodyParser = require('body-parser');
 app.use(bodyParser.urlencoded({ extended: false }));
 
 app.get('/', (req, res) => {
-    const users = [{ profile: { cusomterID: 1, fullname: "Ahmed Mohamed", location: "Cairo", status: "Customer" } }, { profile: { diverID: 1, fullname: "Mohamed", location: "Ismailia", status: "Driver" } }, { profile: { driverID: 2, fullname: "Adel", location: "Ismailia", status: "Driver" } }, { profile: { driverID: 3, fullname: "Adel", location: "Ismailia", status: "Driver" } }, { profile: { driverID: 4, fullname: "Adel", location: "Cairo", status: "Driver" } }, { profile: { driverID: 5, fullname: "Adel", location: "Cairo", status: "Driver" } }];
-    const randomObj = users[Math.floor(Math.random() * users.length)];
-    const token = jwt.sign(randomObj, 'shhhhh');
+    const token = jwt.sign({ profile: { driverID: 3, fullname: "Adel", location: "Ismailia", status: "Driver" }}, 'shhhhh');
     res.render('sample', {token: token});
 });
 
 const UserRequest = require("./models/userRequest");
 const User = require("./models/user");
+const UserService = require("./config/UsersService");
+
+const userService = new UserService();
+
+const privateRooms = [];
 
 io.use(socketioJwt.authorize({ secret: 'shhhhh', handshake: true }));
 
 io.on('connection', (socket) => {
-
-    const online_customers = [], online_drivers = [];
-
-    if(socket.decoded_token.profile.status === "Customer") {
-        online_customers.push({ socketID: socket.id, profile: socket.decoded_token.profile })
+    
+    userService.addCustomer({ socketID: socket.id, profile: { customerID: 1, long: "5", lat: "5", location: "Ismailia"} });
+    if(socket.decoded_token.status === "Customer") {
+        userService.addCustomer({ socketID: socket.id, profile: socket.decoded_token.profile });
     } else {
         socket.join(socket.decoded_token.profile.location);
-        online_drivers.push({ socketID: socket.id, profile: socket.decoded_token.profile })
-    }
-
-    if(online_customers.length !== 0) {
-        console.log("------------------------Online_cutomers ------------------------")
-        console.log(online_customers);
-        console.log("------------------------Online_cutomers ------------------------")
-    }
-
-    if(online_drivers.length !== 0) {
-
-        console.log("------------------------ Rooms ------------------------")
-        
-        console.log(io.sockets.adapter.rooms);
-        console.log("------------------------ Rooms ------------------------")
-        
-        console.log("------------------------Online_drivers ------------------------")
-        console.log(online_drivers);
-        console.log("------------------------Online_dirvers ------------------------")
+        userService.addDriver({ socketID: socket.id, profile: socket.decoded_token.profile });
     }
     
     
+    socket.on("Order", async  data => {
+        try {
+            let orderToMongoDB = await new UserRequest({ customerID:  data.dataRequest.customerID, long: data.dataRequest.long, lat: data.dataRequest.lat, location: data.dataRequest.location
+             }).save();
+            console.log(`${orderToMongoDB} is saved successfully to mongoDB`);
+            if(io.sockets.adapter.rooms[data.dataRequest.location] === undefined) socket.emit("statusFound", { statusFound: "There are not drivers in this location" })
+            else {
+                io.to(data.dataRequest.location).emit("orderToDrivers", { dataRequest: orderToMongoDB });
+                socket.emit("statusFound", { statusFound: "Your request is sent to all drivers in this location" })
+            }
+        } catch(err) { throw new Error(err.message) }
+        
+    });
+    socket.on("orderAcceptedByDriver", async data => {
+        let requestOrder = await UserRequest.findById({ _id: data.dataRequest._id  });
+        if(requestOrder.accepted === false) {
+            await UserRequest.findByIdAndUpdate({ _id: data.dataRequest._id }, { accepted: true }, { new: true } );
+            const { driverSocketID_onServer, driverLocation_onServer, userSocketID_onServer } = {
+                driverSocketID_onServer: userService.getDriverById(data.driverID).socketID, 
+                driverLocation_onServer: userService.getDriverById(data.driverID).profile.location,
+                userSocketID_onServer: userService.getCustomerById(data.dataRequest.customerID).socketID
+            }
+            io.sockets.connected[driverSocketID_onServer].leave(driverLocation_onServer);
+            io.to(userSocketID_onServer).emit("privateMessage", { driverID: data.driverID });
+            socket.join(`${data.driverID}-${data.dataRequest.customerID}`);
+            socket.emit("onUpdated", { customerID: data.dataRequest.customerID });
+        } else socket.emit("tokenStatus", { tokenStatus: "The request is token now" });
+    }) 
+
+    socket.on("onUpdatedA", data => {
+        io.to(userService.getCustomerById(data.customerID).socketID).emit("privateMessage", { driverID: data.driverID });
+    })
+
 
     socket.on("disconnect", () => {
-        console.log("Disconnected");
+       userService.removeUser(socket.id);
     })
+
 });
 
 const port = process.env.PORT || 3000;
