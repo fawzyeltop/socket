@@ -5,15 +5,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
 </head>
 
 <body>
-    <div class="content">
-        <h3>Here is a simple content</h3>
-        <p>Lorem ipsum dolor, sit amet consectetur adipisicing elit. Sed doloremque nemo architecto vitae iusto molestias accusamus reiciendis fugiat eaque dicta, error, odio veniam hic rem dolorum inventore quisquam. Officia, aliquam.</p>
-        <button type="button" id="Order">Order</button>
-        <div class="orderMessageToCustomer"></div>
-        <div class="orderMessageToDriver"></div>
+    <div class="content-fluid py-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-12">
+                    <h3>Here is a simple content</h3>
+                    <p>Lorem ipsum dolor, sit amet consectetur adipisicing elit. Sed doloremque nemo architecto vitae iusto molestias accusamus reiciendis fugiat eaque dicta, error, odio veniam hic rem dolorum inventore quisquam. Officia, aliquam.</p>
+                    <button class="btn btn-primary" type="button" id="Order">Order</button>
+                    <div class="orderMessageToCustomer"></div>
+                    <div class="orderMessageToDriver"></div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <%# jQuery Library %>
@@ -32,10 +39,21 @@
             socket.emit("Order", { dataRequest: { customerID: 3, fullname: "Mohamed Adel Ahmed", long: "5", lat: "5" } })
         })
         socket.on("statusFound", async (data) => {
-            $(".orderMessageToCustomer").text(data.statusFound);
+            $(".orderMessageToCustomer").html(`
+                <div class="mt-2 bg-light p-2 shadow-sm rounded-lg">
+                    <h3>Message to Customer</h3> 
+                    <p>${ data.statusFound }</p>
+                </div>
+            `);
         })
         socket.on("orderToDrivers", data => {
-            $(".orderMessageToDriver").html(`There is an Order with ID: ${data.dataRequest._id} recieved from the customer ${data.dataRequest.customerID} - ${data.dataRequest.fullname} - ${data.dataRequest.location} - ${data.dataRequest.long} - ${data.dataRequest.lat} You can accept it now <button id="accept">Accept</button> `);
+            $(".orderMessageToDriver").html(`
+                <div class="mt-3 bg-light p-2 shadow-sm rounded-lg">
+                        <h3>Message to Driver</h3> 
+                        <p>There is an Order with ID: ${data.dataRequest._id} recieved from the customer ${data.dataRequest.customerID} - ${data.dataRequest.fullname} - ${data.dataRequest.location} - ${data.dataRequest.long} - ${data.dataRequest.lat}</p>
+                        <button class="btn btn-success" id="accept">Accept</button>
+                </div>
+            `);
             $("#accept").click(() => {
                 socket.emit("orderAcceptedByDriver", { driverID: 3, dataRequest: data.dataRequest })
             })
@@ -45,38 +63,56 @@
             console.log(`${data.tokenStatus}`);
         })
 
-        socket.on("driverAttentionEvent", data => {
-            $(".orderMessageToDriver").text(data.driverAttention);
+        socket.on("accepttedOrderEvent", data => {
+            $(".orderMessageToDriver").html(`
+                <div class="mt-3 bg-light p-2 shadow-sm rounded-lg">
+                    <h3>Message to Driver</h3> 
+                    <textarea placeholder="Write Status to User" style="resize: none" class="w-100 form-control" id="txtArea"></textarea>
+                    <button id="sendMessage" class="d-block btn btn-secondary mt-2">Send Message</button>
+                </div>
+            `)
+            $("#sendMessage").click(() => {
+                socket.emit("driverStatus", { customerID: data.customerID, msg: $("#txtArea").val() })
+            })
         })
 
         socket.on("privateMessageToCancel", data => {
-            $(".orderMessageToCustomer").html(`${data.driverDetails.fullname} with ID ${data.driverDetails.driverID} has accepted your order. You can cancel the order now in 30 seconds <button id="cancel">Cancel</button>`);
-            setTimeout(() => {
-                 $(".orderMessageToCustomer").remove();
-                 socket.emit("acceptOrderEvent", { driverID: data.driverDetails.driverID, dataRequest: data.dataRequest } )
-            }, 30000);
+            $(".orderMessageToCustomer").html(`
+                 <div class="mt-2 bg-light p-2 shadow-sm rounded-lg">
+                    <h3>Message to Customer</h3> 
+                    <p class="messageToUser">${data.driverDetails.fullname} Driver with ID ${data.driverDetails.driverID} has accepted your Order. You will recieve Driver Status in this place</p>
+                    <button class="btn btn-danger" id="cancel">Cancel</button>
+                </div>
+            `);
             $("#cancel").click(() => {
                 socket.emit("cancelOrderEvent", { driverID: data.driverDetails.driverID, dataRequest: data.dataRequest })
             })
         })
+
+        socket.on("privateMessageToUser", data => {
+            $(".messageToUser").text(`${ data.msg }`);
+        })
     
         socket.on("CancelToCustomer", data => {
-            $(".orderMessageToCustomer").text(data.msg);
+            $(".orderMessageToCustomer").html(`
+                <div class="mt-2 bg-light p-2 shadow-sm rounded-lg">
+                    <h3>Message to Driver</h3> 
+                    <p>${data.msg}</p>
+                </div>
+            `)
         })
 
         socket.on("CancelToDriver", data => {
-            $(".orderMessageToDriver").text(data.msg);
+            $(".orderMessageToDriver").html(`
+                <div class="mt-3 bg-light p-2 shadow-sm rounded-lg">
+                    <h3>Message to Driver</h3> 
+                    <p>${data.msg}</p>
+                </div>
+            `);
         })
 
-        socket.on("acceptToDriver", data => {
-            $(".orderMessageToDriver").text(data.msg);
-        })
         
-        socket.on("onUpdated", data => {
-            $("#update").click(() => {
-                socket.emit("onUpdatedA", { driverID: 3, customerID: data.customerID })
-            })
-        })
+        
     </script>
 
     

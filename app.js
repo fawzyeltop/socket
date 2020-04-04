@@ -17,18 +17,39 @@ app.use(morgan('tiny'));
 /*@ here we include third-party middleware => Morgan @*/
 
 
-/*@ here we connect to DB @*/
+/*@ here we connect to mongoDB @*/
 const mongoose = require('mongoose');
 mongoose.connect("mongodb+srv://fawzy:0120975049@onlinecoursebooking-vbcbx.gcp.mongodb.net/test?retryWrites=true&w=majority", { useNewUrlParser: true, useUnifiedTopology: true }, (err) => {
     if (err) console.log(err);
     else console.log('Connected to DB');
 });
-/*@ here we connect to DB @*/
+/*@ here we connect to mongoDB @*/
 
+/*@ here we connect to mysqlDB @*/
+const mysql = require('mysql');
+const connection = mysql.createConnection({
+    host     : 'localhost',
+    user     : 'root',
+    password : 'tatx123$',
+    database : 'tatx_website'
+});
+connection.connect(function(err){
+    if(err)  console.log("Database is connected");
+    else console.log("Error connecting database"); 
+});
+/*@ here we connect to mysqlDB @*/
+
+/*
+    connection.query("INSERT INTO customers (name, address) VALUES ('Company Inc', 'Highway 37')", function (err, result) {
+        if(err) console.log(err.message);
+        else console.log("Record is inserted");
+     });
+*/
 
 /*@ Get Request to http://localhost:3000 @*/
 app.get('/', (req, res, next) => {
-    const token = jwt.sign({ driverData: { profile: { driverID: 3, fullname: "Adel", status: "Driver" }, location: "Ismailia"}}, 'shhhhh');
+    const arr = [{ driverData: { profile: { driverID: 3, fullname: "Adel", status: "Driver" }, location: "Ismailia"}}, { driverData: { profile: { driverID: 4, fullname: "Mohamed", status: "Driver" }, location: "Ismailia"}}]
+    const token = jwt.sign(arr[Math.floor(Math.random() * arr.length)], "This project represents the relationship between two actors(Customer & Provider). I hope that it will like");
     res.render('sample', {token: token});
 });
 /*@ Get Request to http://localhost:3000 @*/
@@ -43,7 +64,7 @@ const userService = new UserService();
 /*@ Include UsersService Constructor and make Instance from it @*/
 
 /*@ socketioJwt middleware for Authentication @*/
-io.use(socketioJwt.authorize({ secret: 'shhhhh', handshake: true }));
+io.use(socketioJwt.authorize({ secret: 'This project represents the relationship between two actors(Customer & Provider). I hope that it will like', handshake: true }));
 /*@ socketioJwtt middleware for Authentication @*/
 
 /*@ Socket.io Connection @*/
@@ -83,34 +104,25 @@ io.on('connection', (socket) => {
                 customerDetails: userService.getDriverById(data.dataRequest.customerID)
             }
             io.sockets.connected[driverDetails.socketID].leave(driverDetails.location);
-            socket.emit("driverAttentionEvent", { driverAttention: "We have sent a message to the customer and he can cancel the request in 30 seconds"  });
+            socket.emit("accepttedOrderEvent", { customerID: data.dataRequest.customerID });
             io.to(customerDetails.socketID).emit("privateMessageToCancel", { driverDetails: driverDetails.profile, dataRequest: data.dataRequest });
-            // socket.emit("onUpdated", { customerID: data.dataRequest.customerID });
         } else socket.emit("tokenStatus", { tokenStatus: "The Request is token now" });
     }) 
 
+    socket.on("driverStatus", data => {
+        const customerDetails = userService.getCustomerById(data.customerID);
+        io.to(customerDetails.socketID).emit("privateMessageToUser", { msg: data.msg });
+    })
+
     socket.on("cancelOrderEvent", async data => {
-        let deletedRequest = await UserRequest.findByIdAndDelete({ _id: data.dataRequest._id  });
-        console.log(`${deletedRequest} has been deleted Successfully`);
-        const { driverSocketID_onServer, driverLocation_onServer } = {
-            driverSocketID_onServer: userService.getDriverById(data.driverID).socketID, 
-            driverLocation_onServer: userService.getDriverById(data.driverID).location
-        }
-        io.sockets.connected[driverSocketID_onServer].join(driverLocation_onServer);
-        socket.emit("CancelToCustomer", { msg: "Your request has been canceled" });
-        io.to(driverSocketID_onServer).emit("CancelToDriver", { msg: "The customer has been cancelled the order" });
+        await UserRequest.findByIdAndDelete({ _id: data.dataRequest._id  });
+        const driverDetails = userService.getDriverById(data.driverID);
+        console.log(driverDetails);
+        io.sockets.connected[driverDetails.socketID].join(driverDetails.location);
+        socket.emit("CancelToCustomer", { msg: "Your Request has been cancelled" });
+        io.to(driverDetails.socketID).emit("CancelToDriver", { msg: "The Customer has been cancelled the Order. You can now recieve new requests" });
             
     })
-
-    socket.on("acceptOrderEvent", async data => {
-        const driverDetails =  userService.getDriverById(data.driverID);
-        io.to(driverDetails.socketID).emit("acceptToDriver", { msg: "The customer has been accepted the order" });
-    })
-
-    socket.on("onUpdatedA", data => {
-        io.to(userService.getCustomerById(data.customerID).socketID).emit("privateMessage", { driverID: data.driverID });
-    })
-
 
     socket.on("disconnect", () => {
        userService.removeUser(socket.id);
