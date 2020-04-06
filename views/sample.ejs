@@ -16,8 +16,8 @@
                     <h3>Here is a simple content</h3>
                     <p>Lorem ipsum dolor, sit amet consectetur adipisicing elit. Sed doloremque nemo architecto vitae iusto molestias accusamus reiciendis fugiat eaque dicta, error, odio veniam hic rem dolorum inventore quisquam. Officia, aliquam.</p>
                     <button class="btn btn-primary" type="button" id="Order">Order</button>
-                    <div class="orderMessageToCustomer"></div>
-                    <div class="orderMessageToDriver"></div>
+                    <div class="customer"></div>
+                    <div class="driver"></div>
                 </div>
             </div>
         </div>
@@ -36,10 +36,10 @@
     <script>
         const socket = io.connect('http://localhost:3000', { query: "token=<%= token %>", forceNew: true });
         $("#Order").click(() => {
-            socket.emit("Order", { dataRequest: { customerID: 3, fullname: "Mohamed Adel Ahmed", long: "5", lat: "5" } })
+            socket.emit("customerOrder", { dataRequest: { customerID: 3, fullname: "Mohamed Adel Ahmed", long: "5", lat: "5" } })
         })
         socket.on("statusFound", async (data) => {
-            $(".orderMessageToCustomer").html(`
+            $(".customer").html(`
                 <div class="mt-2 bg-light p-2 shadow-sm rounded-lg">
                     <h3>Message to Customer</h3> 
                     <p>${ data.statusFound }</p>
@@ -47,7 +47,7 @@
             `);
         })
         socket.on("orderToDrivers", data => {
-            $(".orderMessageToDriver").html(`
+            $(".driver").html(`
                 <div class="mt-3 bg-light p-2 shadow-sm rounded-lg">
                         <h3>Message to Driver</h3> 
                         <p>There is an Order with ID: ${data.dataRequest._id} recieved from the customer ${data.dataRequest.customerID} - ${data.dataRequest.fullname} - ${data.dataRequest.location} - ${data.dataRequest.long} - ${data.dataRequest.lat}</p>
@@ -55,64 +55,107 @@
                 </div>
             `);
             $("#accept").click(() => {
-                socket.emit("orderAcceptedByDriver", { driverID: 3, dataRequest: data.dataRequest })
+                socket.emit("driverAccepted", { driverID: 3, dataRequest: data.dataRequest })
             })
         })
 
         socket.on("tokenStatus", data => {
-            console.log(`${data.tokenStatus}`);
-        })
-
-        socket.on("accepttedOrderEvent", data => {
-            $(".orderMessageToDriver").html(`
+            $(".driver").html(`
                 <div class="mt-3 bg-light p-2 shadow-sm rounded-lg">
                     <h3>Message to Driver</h3> 
-                    <textarea placeholder="Write Status to User" style="resize: none" class="w-100 form-control" id="txtArea"></textarea>
-                    <button id="sendMessage" class="d-block btn btn-secondary mt-2">Send Message</button>
+                    <p>${ data.msg }</p>
                 </div>
-            `)
-            $("#sendMessage").click(() => {
-                socket.emit("driverStatus", { customerID: data.customerID, msg: $("#txtArea").val() })
-            })
+            `);
         })
 
-        socket.on("privateMessageToCancel", data => {
-            $(".orderMessageToCustomer").html(`
+        socket.on("privateCancel", data => {
+            $(".customer").html(`
                  <div class="mt-2 bg-light p-2 shadow-sm rounded-lg">
                     <h3>Message to Customer</h3> 
                     <p class="messageToUser">${data.driverDetails.fullname} Driver with ID ${data.driverDetails.driverID} has accepted your Order. You will recieve Driver Status in this place</p>
-                    <button class="btn btn-danger" id="cancel">Cancel</button>
+                    <button class="btn btn-danger" id="customerCancel">Cancel Order</button>
                 </div>
             `);
-            $("#cancel").click(() => {
-                socket.emit("cancelOrderEvent", { driverID: data.driverDetails.driverID, dataRequest: data.dataRequest })
+            $("#customerCancel").click(() => {
+                socket.emit("orderCancel", { driverID: data.driverDetails.driverID, dataRequest: data.dataRequest, By: "Customer" })
             })
         })
 
-        socket.on("privateMessageToUser", data => {
-            $(".messageToUser").text(`${ data.msg }`);
-        })
-    
-        socket.on("CancelToCustomer", data => {
-            $(".orderMessageToCustomer").html(`
-                <div class="mt-2 bg-light p-2 shadow-sm rounded-lg">
+        socket.on("driverAccepted", data => {
+            $(".driver").html(`
+                <div class="mt-3 bg-light p-2 shadow-sm rounded-lg">
                     <h3>Message to Driver</h3> 
-                    <p>${data.msg}</p>
+                    <textarea placeholder="Write Status to User" style="resize: none" class="w-100 form-control" id="txtArea"></textarea>
+                    <div class="d-flex mt-2">
+                        <button id="message" class="btn btn-secondary">Send Message</button>
+                        <button id="driverCancel" class="btn btn-danger ml-2">Cancel Order</button>
+                    </div>
+                </div>
+            `)
+            $("#message").click(() => {
+                socket.emit("driverStatus", {  driverID: data.driverDetails.driverID, dataRequest: data.dataRequest, msg: $("#txtArea").val() })
+                $("#txtArea").val("").focus();
+            })
+            $("#driverCancel").click(() => {
+                socket.emit("orderCancel", { driverID: data.driverDetails.driverID, dataRequest: data.dataRequest, By: "Driver" })
+            })
+        })
+
+        socket.on("CancelToCustomer", data => {
+            $(".customer").html(`
+                <div class="mt-2 bg-light p-2 shadow-sm rounded-lg">
+                    <h3>Message to Customer</h3> 
+                    <p>${ data.msg }</p>
                 </div>
             `)
         })
 
         socket.on("CancelToDriver", data => {
-            $(".orderMessageToDriver").html(`
+            $(".driver").html(`
                 <div class="mt-3 bg-light p-2 shadow-sm rounded-lg">
                     <h3>Message to Driver</h3> 
-                    <p>${data.msg}</p>
+                    <p>${ data.msg }</p>
+                </div>
+            `);
+        })
+
+        socket.on("privateMessage", data => {
+            $(".customer").html(`
+                 <div class="mt-2 bg-light p-2 shadow-sm rounded-lg">
+                    <h3>Message to Customer</h3> 
+                    <p class="messageToUser">${ data.msg }</p>
+                    <button class="btn btn-danger" id="customerCancel">Cancel Order</button>
+                </div>
+            `);
+            $("#customerCancel").click(() => {
+                socket.emit("orderCancel", { driverID: data.driverDetails.driverID, dataRequest: data.dataRequest, By: "Customer" })
+            })
+        })
+    
+        
+
+        
+        
+        socket.on("driverCompleted", data => {
+            $(".driver").html(`
+                <div class="mt-3 bg-light p-2 shadow-sm rounded-lg">
+                    <h3>Message to Driver</h3> 
+                    <p>${ data.msg }</p>
+                </div>
+            `);
+        })
+
+         socket.on("customerCompleted", data => {
+            $(".customer").html(`
+                <div class="mt-3 bg-light p-2 shadow-sm rounded-lg">
+                    <h3>Message to Customer</h3> 
+                    <p>${ data.msg }</p>
                 </div>
             `);
         })
 
         
-        
+    
     </script>
 
     
